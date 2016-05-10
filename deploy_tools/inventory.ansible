@@ -1,6 +1,5 @@
 [live]
-alpha-superlists.lxd
+superlists.lxd
 
 [staging]
-alpha-superlists-staging.lxd
-
+superlists-staging.lxd

@@ -5,7 +5,7 @@
   become: true
 
   vars:
-      host: $inventory_hostname
+      host: "{{ inventory_hostname }}"
 
   tasks:
     - name: make sure required packages are installed
