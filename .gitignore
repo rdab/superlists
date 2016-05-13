@@ -3,3 +3,4 @@ __pycache__
 *.pyc
 *.sublime-*
 lists/static/jquery.min.js
+functional_tests/firefox_profile
