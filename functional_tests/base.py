@@ -1,4 +1,5 @@
 import sys
+import os
 
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from selenium import webdriver
@@ -21,7 +22,14 @@ class FunctionalTest(StaticLiveServerTestCase):
             super().tearDownClass()
 
     def setUp(self):
-        self.browser = webdriver.Firefox()
+        profile = webdriver.FirefoxProfile(
+            os.path.dirname(__file__) + '/firefox_profile/h29robc3.selenium'
+        )
+        profile.add_extension(
+            os.path.dirname(__file__) + '/firefox_profile/autoauth-2.1-fx+fn.xpi'
+        )
+
+        self.browser = webdriver.Firefox(firefox_profile=profile)
         self.browser.implicitly_wait(3)
 
     def tearDown(self):
