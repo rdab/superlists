@@ -70,7 +70,7 @@ test("onlogin sends assertion with csrf token", function() {
     onloginCallback(assertion);
     equal(
         requests[0].requestBody,
-        $.param({assertion: assertion, crsfmiddlewaretoken: token}),
+        $.param({assertion: assertion, csrfmiddlewaretoken: token}),
         'check POST data'
     );
 });
