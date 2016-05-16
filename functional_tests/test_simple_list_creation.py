@@ -1,3 +1,4 @@
+import os
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
@@ -53,7 +54,16 @@ class NewVisitorTest(FunctionalTest):
         ## We use a new browser session to make sure that no information
         ## of Edith's is coming through from cookies etc
         self.browser.quit()
-        self.browser = webdriver.Firefox()
+
+        ## Using the same profile might ruin the point of using a new driver
+        ## but testing behind a proxy is killing me :(
+        profile = webdriver.FirefoxProfile(
+            os.path.dirname(__file__) + '/firefox_profile/h29robc3.selenium'
+        )
+        profile.add_extension(
+            os.path.dirname(__file__) + '/firefox_profile/autoauth-2.1-fx+fn.xpi'
+        )
+        self.browser = webdriver.Firefox(firefox_profile=profile)
 
         # Francis visits the home page. There is no sign of Edith's lists
         self.browser.get(self.server_url)
