@@ -4,3 +4,5 @@ __pycache__
 *.sublime-*
 */static/jquery.min.js
 functional_tests/firefox_profile
+deploy_tools/vars/sensitive_vars.yml
+deploy_tools/*.retry

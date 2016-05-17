@@ -2,16 +2,33 @@
 - hosts: all
 
   user: devops
-  become: true
 
   vars:
       host: "{{ inventory_hostname }}"
+      site_folder: "/home/{{ ansible_user }}/sites/{{ host }}"
+
+  vars_files:
+    # Local proxy credentials declared here
+    - ./vars/sensitive_vars.yml
 
   tasks:
+
+    - name: upgrade repo
+      apt:  update_cache=yes upgrade=safe
+      become: true
+      tags:
+        - provision
+
     - name: make sure required packages are installed
-      apt: pkg=nginx,git,python3,python3-pip state=present
-    - name: make sure virtualenv is installed
-      shell: pip3 install virtualenv
+      apt: pkg={{ item }} state=present
+      become: true
+      with_items:
+        - nginx
+        - git
+        - python3
+        - python3-pip
+      tags:
+        - provision
 
     - name: allow long hostnames in nginx
       lineinfile:
@@ -19,10 +36,24 @@
         regexp='(\s+)#? ?server_names_hash_bucket_size'
         backrefs=yes
         line='\1server_names_hash_bucket_size 64;'
+      become: true
+      tags:
+        - provision
 
     - name: add nginx config to sites-available
       template: src=./nginx.conf.j2 dest=/etc/nginx/sites-available/{{ host }}
+      become: true
+      tags:
+        - provision
+      notify:
+          - restart nginx
 
+    - name: remove default nginx site
+      file: name=/etc/nginx/sites-enabled/default
+            state=absent
+      become: true
+      tags:
+        - provision
       notify:
           - restart nginx
 
@@ -30,23 +61,92 @@
       file: src=/etc/nginx/sites-available/{{ host }}
             dest=/etc/nginx/sites-enabled/{{ host }}
             state=link
-
+      become: true
+      tags:
+        - provision
       notify:
           - restart nginx
 
     - name: write gunicorn init script
       template: src=./gunicorn-upstart.conf.j2 dest=/etc/init/gunicorn-{{ host }}.conf
-
+      become: true
+      tags:
+        - provision
       notify:
           - restart gunicorn
 
+    - name: Create folder structure
+      file: path='{{ site_folder }}/{{ item }}' state=directory
+      with_items: ['database', 'static', 'virtualenv', 'source']
+      tags:
+        - deploy
+
+    - name: Deploy code
+      git: repo=https://github.com/rdab/superlists.git
+           dest="{{ site_folder }}/source"
+           force=yes
+      environment: "{{ proxy_env }}"
+      tags:
+        - deploy
+      notify:
+        - restart gunicorn
+
+    - name: install virtualenv package
+      pip: name=virtualenv state=present executable=pip3
+      become: true
+      environment: "{{ proxy_env }}"
+      tags:
+        - always
+
+    - name: install python packages in a virtualenv
+      pip: requirements={{ site_folder }}/source/requirements.txt
+           state=present
+           virtualenv={{ site_folder }}/virtualenv/
+           virtualenv_python=python3
+      environment: "{{ proxy_env }}"
+      tags:
+        - always
+
+    - name: write django settings
+      template: src=./settings.py.j2
+                dest="{{ site_folder }}/source/superlists/settings.py"
+      tags:
+        - deploy
+      notify:
+        - restart gunicorn
+
+    - name: collect static resources
+      django_manage: command=collectstatic
+                     app_path="{{ site_folder }}/source/"
+                     settings=superlists.settings
+                     virtualenv="{{ site_folder }}/virtualenv/"
+      tags:
+        - deploy
+
+    - name: migrate database
+      django_manage: command=migrate
+                     app_path="{{ site_folder }}/source/"
+                     settings=superlists.settings
+                     virtualenv="{{ site_folder }}/virtualenv/"
+      tags:
+        - deploy
+
     - name: make sure nginx is running
       service: name=nginx state=running
+      become: true
+      tags:
+        - always
+
     - name: make sure gunicorn is running
       service: name=gunicorn-{{ host }} state=running
+      become: true
+      tags:
+        - always
 
   handlers:
     - name: restart nginx
+      become: true
       service: name=nginx state=restarted
     - name: restart gunicorn
+      become: true
       service: name=gunicorn-{{ host }} state=restarted
