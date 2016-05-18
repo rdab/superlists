@@ -96,7 +96,7 @@
       become: true
       environment: "{{ proxy_env }}"
       tags:
-        - always
+        - provision
 
     - name: install python packages in a virtualenv
       pip: requirements={{ site_folder }}/source/requirements.txt
@@ -105,7 +105,7 @@
            virtualenv_python=python3
       environment: "{{ proxy_env }}"
       tags:
-        - always
+        - provision
 
     - name: write django settings
       template: src=./settings.py.j2
